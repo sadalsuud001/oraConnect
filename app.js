@@ -7,9 +7,30 @@ const app = new App({
     
     // Socket Mode doesn't listen on a port, but in case you want your app to respond to OAuth,
     // you still need to listen on some port!
+    socketMode: true,
     port: process.env.PORT || 3000,
     logLevel: LogLevel.DEBUG, // Set log level to debug for development
 });
+
+// database (so called)
+// var users_table = [
+//          in-person   online  locations
+//user_id1  true        false   RWS
+//iser_id2  true        true    Austin
+//];
+
+// var users_workdays_table = [user_id: [workdays]];
+
+// var users_interests_table = [
+// user_id1: [food,fitness,tech],
+// user_id2: [food,music,art,tech],
+//];
+
+// var users_events_table = [
+// user_id1: [event1, event2],
+// user_id2: [event1, event3],
+//]
+
 
 // Users Profile Table
 const users_table = new Map();
@@ -76,6 +97,27 @@ function updateUserInterestsTable(userId, data) {
       // If the user ID does not exist in the map, create a new array value
       users_interests_table.set(userId, [data]);
     }
+}
+
+const users_events_table = new Map();
+function getEventsData(user_id) {
+    if (users_events_table.has(user_id)) {
+        // If the user ID already exists in the map, update the array value
+        return users_events_table.get(user_id);
+    } else {
+        return [];
+    }
+}
+function updateUserEventsTable(userId, data) {
+    if (users_events_table.has(userId)) {
+        // If the user ID already exists in the map, update the array value
+        const existingData = users_events_table.get(userId);
+        existingData.push(data);
+        users_events_table.set(userId, existingData);
+      } else {
+        // If the user ID does not exist in the map, create a new array value
+        users_events_table.set(userId, [data]);
+      }
 }
 
 // Listens to incoming messages that contain "hello"
@@ -184,7 +226,7 @@ var fourth = app.action('office_days_selection', async ({ body, ack, say }) => {
 
     var user_id = `<@${body.user.id}>`;
     // Extract the selected values from payload
-    let data = payload.actions[0].selected_options.map(option => option.value);
+    let data = body.actions[0].selected_options.map(option => option.value);
     updateUserWorkdaysTable(user_id, data);
 });
 
@@ -193,29 +235,72 @@ var final = app.action('interest', async ({ body, ack, say }) => {
     await ack();
     await say(`<@${body.user.id}> Congrats! Preferences setup done!`);
     var user_id = `<@${body.user.id}>`;
+    await say("User id is " + user_id);
     // Extract the selected values from payload
-    let data = payload.actions[0].selected_options.map(option => option.value);
+    let data = body.actions[0].selected_options.map(option => option.value);
     updateUserInterestsTable(user_id, data);
+    const intst = getInterestsData(user_id);
+    await say("Your interests is " + intst);
+});
+
+app.event('app_mention', async ( {event, say} ) => {
+    // Iterate users_interests_table to find users who subscribe to the tags, e.g., 'fitness'
+    const messageText = event.text;
+
+    if (messageText.includes('fitness') || messageText.includes('Fitness')) {
+        // Extract user ID from the event
+        const userId = event.user;
+
+        // Update events_table if the message contains 'fitness'
+        await updateUserEventsTable(userId, messageText);
+    } else if (messageText.includes('food') || messageText.includes('Food')) {
+        // Extract user ID from the event
+        const userId = event.user;
+
+        // Update events_table if the message contains 'fitness'
+        await updateUserEventsTable(userId, messageText);
+    } else if (messageText.includes('art') || messageText.includes('Art')) {
+        // Extract user ID from the event
+        const userId = event.user;
+
+        // Update events_table if the message contains 'fitness'
+        await updateUserEventsTable(userId, messageText);
+    } else if (messageText.includes('tech') || messageText.includes('Tech')) {
+        // Extract user ID from the event
+        const userId = event.user;
+
+        // Update events_table if the message contains 'fitness'
+        await updateUserEventsTable(userId, messageText);
+    } else if (messageText.includes('music') || messageText.includes('Music')) {
+        // Extract user ID from the event
+        const userId = event.user;
+
+        // Update events_table if the message contains 'fitness'
+        await updateUserEventsTable(userId, messageText);
+    }
+
+    // todo 1. handle false alarm: false app_mention @oraConnect)
+    // todo 2. add Asynchronous Operations: 
+    // If getInterestsData or updateUserEventsTable are asynchronous operations 
+    // (e.g., involving database calls or external API requests), 
+    // you might need to await them to ensure proper sequencing of actions
+
+});
+
+// Listens to incoming messages that contain "events"
+var showEvents = app.message('show my events', async ({ event, message, say }) => {
+    // updateUserEventsTable(`${event.user}`, ["event1 ","event2 "]);
+    // var str = users_events_table.get(`${event.user}`).join('\n');
+    var userEvents = users_events_table.get(`${event.user}`);
+    var str = userEvents ? userEvents.join('\n \n') : 'No events found.';
+    await say({
+        text: "Here is your events list: \n" + str,
+        channel: 'A06RVQ3TEM7',
+    });
 });
 
 
-// database
-// var users_table = [
-//          in-person   online  locations
-//user_id1  true        false   RWS
-//iser_id2  true        true    Austin
-//];
-
-// var users_workdays_table = [];
-
-// var users_interests_table = [
-//           food    fitness music   art    tech
-//user_id1   true    false   true    true   false
-//user_id2   true    false   false   false  true
-//];
-
-//var events = [];
-
+// Amanda Xu user name: U06RBT2CZM2
 
 (async () => {
     // Start your app
